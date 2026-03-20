@@ -4,6 +4,7 @@ import (
 	fiftyonedegreesDevicedetection "github.com/prebid/prebid-server/v4/modules/fiftyonedegrees/devicedetection"
 	prebidOrtb2blocking "github.com/prebid/prebid-server/v4/modules/prebid/ortb2blocking"
 	prebidRulesengine "github.com/prebid/prebid-server/v4/modules/prebid/rulesengine"
+	scenecontextRtd "github.com/prebid/prebid-server/v4/modules/scenecontext/rtd"
 	scope3Rtd "github.com/prebid/prebid-server/v4/modules/scope3/rtd"
 )
 
@@ -17,6 +18,9 @@ func builders() ModuleBuilders {
 		"prebid": {
 			"ortb2blocking": prebidOrtb2blocking.Builder,
 			"rulesengine":   prebidRulesengine.Builder,
+		},
+		"scenecontext": {
+			"rtd": scenecontextRtd.Builder,
 		},
 		"scope3": {
 			"rtd": scope3Rtd.Builder,
