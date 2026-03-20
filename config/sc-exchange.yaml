@@ -1,0 +1,91 @@
+# sc-exchange PBS configuration
+# SceneContext RTD exchange — contextual CTV enrichment
+#
+# Override with environment variables: PBS_<KEY>=<VALUE>
+# e.g. PBS_SCENECONTEXT_RTD_ENDPOINT=http://sc-vespa:8000/bid
+
+host: 0.0.0.0
+port: 8000
+admin_port: 6060
+
+datacenter: "us-east"
+
+# ---------------------------------------------------------------------------
+# Hooks — enable the module pipeline
+# ---------------------------------------------------------------------------
+hooks:
+  enabled: true
+  modules:
+    scenecontext:
+      rtd:
+        enabled: true
+        endpoint: "http://sc-vespa:8000/bid"
+        timeout_ms: 8   # fail-open — auction is never blocked
+
+# ---------------------------------------------------------------------------
+# Default execution plan — applies scenecontext/rtd to every auction
+# ---------------------------------------------------------------------------
+hooks:
+  host_execution_plan:
+    endpoints:
+      /openrtb2/auction:
+        stages:
+          processed-auction-request:
+            groups:
+              - timeout: 8
+                hook_sequence:
+                  - module_code: "scenecontext.rtd"
+                    hook_impl_code: "scenecontext_rtd_processed_auction"
+
+# ---------------------------------------------------------------------------
+# Adapters — demand partners that receive enriched bid requests
+# ---------------------------------------------------------------------------
+adapters:
+  pubmatic:
+    endpoint: "https://hbopenbid.pubmatic.com/translator?source=prebid-server"
+
+  smartadserver:  # Equativ
+    endpoint: "https://prg.smartadserver.com/prebid/v1"
+
+  # Standard RTB adapters — all receive content.data[] via scenecontext/rtd
+  # No patches needed: OpenRTB 2.6 content.data[] is read natively
+  appnexus:
+    endpoint: "http://ib.adnxs.com/openrtb2"
+  rubicon:
+    endpoint: "http://exapi-us-east.rubiconproject.com/a/api/exchange.json"
+  ttd:
+    endpoint: "https://direct.adsrvr.org/bid/prebid/"
+  ix:
+    endpoint: "https://htlb.casalemedia.com/openrtb/pbjs"
+  magnite:
+    endpoint: "https://exapi-us-east.rubiconproject.com/a/api/exchange.json"
+
+# ---------------------------------------------------------------------------
+# Cache — bid caching for SSAI/CTV
+# ---------------------------------------------------------------------------
+cache:
+  scheme: http
+  host: prebid-cache
+  query: uuid=%PBS_CACHE_UUID%
+
+# ---------------------------------------------------------------------------
+# Metrics
+# ---------------------------------------------------------------------------
+metrics:
+  prometheus:
+    port: 9090
+    namespace: sc_exchange
+    subsystem: prebid
+    timeout_ms: 100
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+log:
+  level: info
+
+# ---------------------------------------------------------------------------
+# CORS — allow publisher SSAI/player origins
+# ---------------------------------------------------------------------------
+cors:
+  allow_all_origins: false

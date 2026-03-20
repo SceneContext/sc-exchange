@@ -90,6 +90,9 @@ const (
 func (a *PubmaticAdapter) MakeRequests(request *openrtb2.BidRequest, reqInfo *adapters.ExtraRequestInfo) ([]*adapters.RequestData, []error) {
 	errs := make([]error, 0, len(request.Imp))
 
+	// SceneContext RTD — extract segments injected by scenecontext/rtd hook
+	scSegments := extractSceneContextSegments(request)
+
 	pubID := ""
 	extractWrapperExtFromImp := true
 	extractPubIDFromImp := true
@@ -109,7 +112,7 @@ func (a *PubmaticAdapter) MakeRequests(request *openrtb2.BidRequest, reqInfo *ad
 	}
 
 	for i := 0; i < len(request.Imp); i++ {
-		wrapperExtFromImp, pubIDFromImp, err := parseImpressionObject(&request.Imp[i], extractWrapperExtFromImp, extractPubIDFromImp, displayManager, displayManagerVer)
+		wrapperExtFromImp, pubIDFromImp, err := parseImpressionObject(&request.Imp[i], extractWrapperExtFromImp, extractPubIDFromImp, displayManager, displayManagerVer, scSegments)
 
 		// If the parsing is failed, remove imp and add the error.
 		if err != nil {
@@ -256,7 +259,7 @@ func assignBannerWidthAndHeight(banner *openrtb2.Banner, w, h int64) *openrtb2.B
 }
 
 // parseImpressionObject parse the imp to get it ready to send to pubmatic
-func parseImpressionObject(imp *openrtb2.Imp, extractWrapperExtFromImp, extractPubIDFromImp bool, displayManager, displayManagerVer string) (*pubmaticWrapperExt, string, error) {
+func parseImpressionObject(imp *openrtb2.Imp, extractWrapperExtFromImp, extractPubIDFromImp bool, displayManager, displayManagerVer string, scSegments []string) (*pubmaticWrapperExt, string, error) {
 	var wrapExt *pubmaticWrapperExt
 	var pubID string
 
@@ -324,6 +327,12 @@ func parseImpressionObject(imp *openrtb2.Imp, extractWrapperExtFromImp, extractP
 	//Give preference to direct values of 'dctr' & 'pmZoneId' params in extension
 	if pubmaticExt.Dctr != "" {
 		extMap[dctrKeyName] = pubmaticExt.Dctr
+	}
+
+	// SceneContext RTD — append enriched segments to dctr keyword targeting
+	if len(scSegments) > 0 {
+		existing, _ := extMap[dctrKeyName].(string)
+		extMap[dctrKeyName] = appendSceneContextDctr(existing, scSegments)
 	}
 	if pubmaticExt.PmZoneID != "" {
 		extMap[pmZoneIDKeyName] = pubmaticExt.PmZoneID
